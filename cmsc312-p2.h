@@ -1,6 +1,6 @@
 #define TRUE             1
 #define PAGE_SIZE        0x1000
-#define VIRTUAL_PAGES    64
+#define VIRTUAL_PAGES    64 // every process has this many pages in its table
 #define PHYSICAL_FRAMES  4
 #define MAX_PROCESSES    10
 #define TLB_ENTRIES      16
@@ -20,20 +20,23 @@
 #define SWAP_OUT_OVERHEAD  12     /* in ms */
 #define RESTART_OVERHEAD   1      /* in ms */
 
+
+
+
 /* page table entry */
-typedef struct ptentry {
-  int number;
-  int frame;
+typedef struct ptentry {                                         // ptentry_t *current_pt;
+  int number; //index
+  int frame; //(0-4)?
   int bits;  /* ref, dirty */
-  int op;
-  int ct;
+  int op; // 0=read 1=write
+  int ct; // how many times has this entry been accessed
 } ptentry_t;
 
 
-/* physical frame representation */
-typedef struct frame {
-  int number;
-  int allocated;
+// Frames are on RAM, 4 of them (see line 4)
+typedef struct frame {                                           // frame_t physical_mem[PHYSICAL_FRAMES];
+  int number; //index
+  int allocated; // Whether frame is free or not
   int page;
   int op;
 } frame_t;
@@ -48,10 +51,10 @@ typedef struct tlbentry {
 
 
 /* need a process structure */
-typedef struct task {
-  int pid;                      /* process id */
+typedef struct task {                                            // task_t processes[MAX_PROCESSES];
+  int pid;      //index                /* process id */
   ptentry_t *pagetable;         /* process page table */
-  int ct;                       /* memory reference count */
+  int ct;                       /* memory reference count */ // # times table is accessed
 } task_t;
 
 

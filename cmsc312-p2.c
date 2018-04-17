@@ -135,7 +135,7 @@ int main( int argc, char **argv )
       int valid;
 
       /* get memory access */
-      if ( get_memory_access( in, &pid, &vaddr, &op, &eof )) {
+      if ( get_memory_access( in, &pid, &vaddr, &op, &eof )) { // process one line of input
         fprintf( stderr, "get_memory_access\n" );
         exit( -1 );	
       }
@@ -409,9 +409,21 @@ int tlb_flush( void )
 
 int tlb_resolve_addr( unsigned int vaddr, unsigned int *paddr, int op )
 {
-
+  // GHOSH SAID HINT IN pt_demand_page
   /* Task #2 */
+  unsigned int page = ( vaddr / PAGE_SIZE );
 
+  int i;
+  for(i = 0; i < TLB_ENTRIES; i++){
+    if(tlb[i].page == page){
+      *paddr = (tlb[i].page * PAGE_SIZE) + ( vaddr % PAGE_SIZE );
+      printf("tlb_resolve_addr: TLB hit, paddr = %#x\n", *paddr);
+      current_pt[page].ct++;
+      hw_update_pageref(&current_pt[page], op);
+      return 1;
+    }
+  }
+  printf("tlb_resolve_addr: TLB miss\n");
   return 0;  /* miss */
 }
 
@@ -474,8 +486,20 @@ int pt_resolve_addr( unsigned int vaddr, unsigned int *paddr, int *valid, int op
 {
 
   /* Task #2 */
+  unsigned int page = ( vaddr / PAGE_SIZE );
+  
+  *valid = current_pt[page].bits & VALIDBIT; // Set valid to whatever the status of the page's valid bit is
 
-  return 0;
+  if(*valid){ // If the page is valid (i.e. in memory) calculate its paddr and return 0
+    *paddr = (current_pt[page].frame * PAGE_SIZE) + ( vaddr % PAGE_SIZE );
+    printf("pt_resolve_addr: page table hit, paddr = %#x\n", *paddr);
+    current_pt[page].ct++;
+    hw_update_pageref(&current_pt[page], op);
+    return 0;
+  }
+  // Else we have a page fault
+  printf("pt_resolve_addr: page fault\n");
+  return -1;
 }
 
 
@@ -492,6 +516,7 @@ int pt_resolve_addr( unsigned int vaddr, unsigned int *paddr, int *valid, int op
 
 ***********************************************************************/
 
+// called for every page access
 int pt_demand_page( int pid, unsigned int vaddr, unsigned int *paddr, int op, int mech )
 { 
   int i;
@@ -550,6 +575,18 @@ int pt_demand_page( int pid, unsigned int vaddr, unsigned int *paddr, int op, in
 int pt_invalidate_mapping( int pid, int page )
 {
   /* Task #3 */
+  printf("pt_invalidate_mapping: Invalidating process %i page %i\n", pid, page);
+  invalidates++; // Increment count of invalidations
+  physical_mem[processes[pid].pagetable[page].frame].allocated = 0; // Set the frame to unallocated
+
+  // If the dirty bit is set, need to write frame to disk
+  if(processes[pid].pagetable[page].bits & DIRTYBIT){
+    pt_write_frame(&physical_mem[processes[pid].pagetable[page].frame]);
+  }
+
+  // Invalidate the page table entry
+  processes[pid].pagetable[page].bits &= (DIRTYBIT | REFBIT); // Set valid bit to 0
+  processes[pid].pagetable[page].ct = 0;
 
   return 0;
 }
@@ -588,8 +625,16 @@ int pt_write_frame( frame_t *f )
 int pt_alloc_frame( int pid, frame_t *f, ptentry_t *ptentry, int op, int mech )
 {
   /* Task #3 */
-
+  printf("pt_alloc_frame: Allocating frame %i to process %i page %i\n", f->number, pid, ptentry->number);
   /* initialize page frame */
+  f->allocated = 1;
+  f->page = ptentry->number;
+  f->op = op;
+
+  ptentry->frame = f->number;
+  ptentry->bits = DIRTYBIT | REFBIT | VALIDBIT; // Set bits to 111
+  ptentry->op = op;
+  ptentry->ct = 0;
 
   /* update the replacement info */
   pt_update_replacement[mech]( pid, f );
@@ -612,10 +657,10 @@ int pt_alloc_frame( int pid, frame_t *f, ptentry_t *ptentry, int op, int mech )
 
 int hw_update_pageref( ptentry_t *ptentry, int op )
 {
-  ptentry->bits |= REFBIT;
+  ptentry->bits |= REFBIT; // set ref to 1
 
   if ( op ) {   /* write */
-    ptentry->bits |= DIRTYBIT;
+    ptentry->bits |= DIRTYBIT; // set dirty to 1
   }
 
   return 0;

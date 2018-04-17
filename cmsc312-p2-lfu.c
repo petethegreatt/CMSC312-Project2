@@ -95,7 +95,31 @@ int init_lfu( FILE *fp )
 int replace_lfu( int *pid, frame_t **victim )
 {
   /* Task 3 */
+  lfu_entry_t *current = page_list->first;
+  lfu_entry_t *least_count = current;
+  while(current->next){
+    current = current->next;
+    if(current->ptentry->ct < least_count->ptentry->ct){
+      least_count = current;
+    }
+  }
 
+  // Remove least_count from the linked list
+  if(least_count->next){
+    least_count->next->prev = least_count->prev;
+  }
+  if(least_count->prev){
+    least_count->prev->next = least_count->next;
+  } else{
+    page_list->first = least_count->next;
+  }
+
+  // Set victim to the frame given by the frame value of least_counts's ptentry
+  *victim = &(physical_mem[least_count->ptentry->frame]);
+  *pid = least_count->pid;
+  free(least_count);
+
+  printf("replace_lfu: Selected frame %i for replacement\n", least_count->ptentry->frame);
   return 0;
 }
 
@@ -115,6 +139,25 @@ int replace_lfu( int *pid, frame_t **victim )
 int update_lfu( int pid, frame_t *f )
 {
   /* Task 3 */
+  // Make new list entry
+  lfu_entry_t *list_entry = ( lfu_entry_t *)malloc(sizeof(lfu_entry_t));
+  list_entry->pid = pid;
+  list_entry->ptentry = &(processes[pid].pagetable[f->page]);
+  list_entry->next = NULL;
+  list_entry->prev = NULL;
+
+  // If the page list has items, put this one at the end
+  if(page_list->first){
+    lfu_entry_t *last = page_list->first;
+    while(last->next){
+      last = last->next;
+    }
+    last->next = list_entry;
+    list_entry->prev = last;
+  }
+  else{ // Else put this one as first
+    page_list->first = list_entry;
+  }
   
   return 0;
 }

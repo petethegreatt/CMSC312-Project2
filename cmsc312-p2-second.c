@@ -96,7 +96,33 @@ int init_second( FILE *fp )
 int replace_second( int *pid, frame_t **victim )
 {
   /* Task #3 */
+  second_entry_t *current = page_list->first;
+  while(current->next){
+    if(current->ptentry->bits & REFBIT){ // If ref is 1, set it to 0 (i.e. give this entry a second chance)
+      current->ptentry->bits &= 0;
+    }
+    else { // If ref is 0, use this entry
+      break;
+    }
+    current = current->next;
+  }
+  
+  // Remove current from the linked list
+  if(current->next){
+    current->next->prev = current->prev;
+  }
+  if(current->prev){
+    current->prev->next = current->next;
+  } else{
+    page_list->first = current->next;
+  }
 
+  // Set victim to the frame given by the frame value of current's ptentry
+  *victim = &(physical_mem[current->ptentry->frame]);
+  *pid = current->pid;
+  free(current);
+
+  printf("replace_second: Selected frame %i for replacement\n", current->ptentry->frame);
   return 0;
 }
 
@@ -114,6 +140,25 @@ int replace_second( int *pid, frame_t **victim )
 int update_second( int pid, frame_t *f )
 {
   /* Task #3 */
+  // Make new list entry
+  second_entry_t *list_entry = ( second_entry_t *)malloc(sizeof(second_entry_t));
+  list_entry->pid = pid;
+  list_entry->ptentry = &(processes[pid].pagetable[f->page]);
+  list_entry->next = NULL;
+  list_entry->prev = NULL;
+
+  // If the page list has items, put this one at the end
+  if(page_list->first){
+    second_entry_t *last = page_list->first;
+    while(last->next){
+      last = last->next;
+    }
+    last->next = list_entry;
+    list_entry->prev = last;
+  }
+  else{ // Else put this one as first
+    page_list->first = list_entry;
+  }
 
   return 0;  
 }
