@@ -202,9 +202,10 @@ int write_results( FILE *out )
   fprintf( out, "TLB hit rate = %f\n", tlb_hit_ratio );
   float tlb_miss_time = TLB_SEARCH_TIME + 2*MEMORY_ACCESS_TIME;
   float tlb_hit_time = TLB_SEARCH_TIME + MEMORY_ACCESS_TIME;
+  float mem_access_time = tlb_miss_time * (1.0-tlb_hit_ratio) + tlb_hit_time * tlb_hit_ratio;
   fprintf( out, "Effective memory-access time = %fns\n", 
 	   /* Task #3: ADD THIS COMPUTATION */
-	   tlb_miss_time * (1.0-tlb_hit_ratio) + tlb_hit_time * tlb_hit_ratio);
+	   mem_access_time);
 
   fprintf( out, "++++++++++++++++++++ Effective Access Time ++++++++++++++++++\n" );
   fprintf( out, "Assuming,\n %dms average page-fault service time (w/o swap out), a %dms average swap out time, and %dns memory access time\n", 
@@ -216,7 +217,7 @@ int write_results( FILE *out )
   fprintf( out, "Page fault ratio = %f\n", pf_ratio );
   fprintf( out, "Effective access time = %fms\n", 
 	   /* Task #3: ADD THIS COMPUTATION */
-	   0.0);
+	   (1-pf_ratio)*(mem_access_time/1000) + pf_ratio*(PF_OVERHEAD + SWAP_IN_OVERHEAD + RESTART_OVERHEAD + swap_out_ratio*SWAP_OUT_OVERHEAD));
 
   return 0;
 }

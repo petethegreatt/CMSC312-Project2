@@ -20,9 +20,6 @@
 #define SWAP_OUT_OVERHEAD  12     /* in ms */
 #define RESTART_OVERHEAD   1      /* in ms */
 
-
-
-
 /* page table entry */
 typedef struct ptentry {                                         // ptentry_t *current_pt;
   int number; //index
