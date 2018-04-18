@@ -217,8 +217,8 @@ int write_results( FILE *out )
   fprintf( out, "Page fault ratio = %f\n", pf_ratio );
   fprintf( out, "Effective access time = %fms\n", 
 	   /* Task #3: ADD THIS COMPUTATION */
-	   (1-pf_ratio)*(mem_access_time/1000) + pf_ratio*(PF_OVERHEAD + SWAP_IN_OVERHEAD + RESTART_OVERHEAD + swap_out_ratio*SWAP_OUT_OVERHEAD));
-  //  on page hit, costs memory access time, and on page fault, costs overhead of fault+swap+restart+(swap * swap ratio)
+     tlb_hit_ratio*tlb_hit_time + tlb_miss_ratio*(1-pf_ratio)*(tlb_miss_time) + tlb_miss_ratio*pf_ratio*(PF_OVERHEAD + SWAP_IN_OVERHEAD + RESTART_OVERHEAD + swap_out_ratio*SWAP_OUT_OVERHEAD));
+  //  This is just the equation Ghosh gave us in class
   return 0;
 }
 
