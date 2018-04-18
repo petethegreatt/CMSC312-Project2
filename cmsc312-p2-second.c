@@ -99,7 +99,7 @@ int replace_second( int *pid, frame_t **victim )
   second_entry_t *current = page_list->first;
   while(current->next){
     if(current->ptentry->bits & REFBIT){ // If ref is 1, set it to 0 (i.e. give this entry a second chance)
-      current->ptentry->bits &= 0;
+      current->ptentry->bits &= DIRTYBIT | VALIDBIT;
     }
     else { // If ref is 0, use this entry
       break;
