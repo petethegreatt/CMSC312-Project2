@@ -199,10 +199,12 @@ int write_results( FILE *out )
   tlb_miss_ratio = ( (float) memory_accesses / (float) (total_accesses-pfs) );
   tlb_hit_ratio = 1.0 - tlb_miss_ratio;
   fprintf( out, "memory accesses: %d; total memory accesses %d (less page faults)\n", memory_accesses, total_accesses-pfs ); 
-  fprintf( out, "TLB hit rate = %f\n", tlb_hit_ratio ); 
+  fprintf( out, "TLB hit rate = %f\n", tlb_hit_ratio );
+  float tlb_miss_time = TLB_SEARCH_TIME + 2*MEMORY_ACCESS_TIME;
+  float tlb_hit_time = TLB_SEARCH_TIME + MEMORY_ACCESS_TIME;
   fprintf( out, "Effective memory-access time = %fns\n", 
 	   /* Task #3: ADD THIS COMPUTATION */
-	   0.0);
+	   tlb_miss_time * (1.0-tlb_hit_ratio) + tlb_hit_time * tlb_hit_ratio);
 
   fprintf( out, "++++++++++++++++++++ Effective Access Time ++++++++++++++++++\n" );
   fprintf( out, "Assuming,\n %dms average page-fault service time (w/o swap out), a %dms average swap out time, and %dns memory access time\n", 
@@ -211,7 +213,7 @@ int write_results( FILE *out )
 	   swaps, invalidates, pfs ); 
   pf_ratio = ( (float)pfs / (float)total_accesses );
   swap_out_ratio = ( (float)swaps / (float)pfs );
-  fprintf( out, "Page fault ratio = %f\n", pf_ratio ); 
+  fprintf( out, "Page fault ratio = %f\n", pf_ratio );
   fprintf( out, "Effective access time = %fms\n", 
 	   /* Task #3: ADD THIS COMPUTATION */
 	   0.0);
@@ -494,6 +496,7 @@ int pt_resolve_addr( unsigned int vaddr, unsigned int *paddr, int *valid, int op
     *paddr = (current_pt[page].frame * PAGE_SIZE) + ( vaddr % PAGE_SIZE );
     printf("pt_resolve_addr: page table hit, paddr = %#x\n", *paddr);
     current_pt[page].ct++;
+    memory_accesses++;
     hw_update_pageref(&current_pt[page], op);
     return 0;
   }
@@ -632,7 +635,8 @@ int pt_alloc_frame( int pid, frame_t *f, ptentry_t *ptentry, int op, int mech )
   f->op = op;
 
   ptentry->frame = f->number;
-  ptentry->bits = DIRTYBIT | REFBIT | VALIDBIT; // Set bits to 111
+  ptentry->bits |= VALIDBIT; // Set valid bit to 1
+  hw_update_pageref(ptentry, op); // Set other bits
   ptentry->op = op;
   ptentry->ct = 0;
 
